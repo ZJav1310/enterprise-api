@@ -1,20 +1,21 @@
 package com.enterpriseproject.enterpriseapi;
 
+import Controllers.Commands;
 import Models.Film;
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-import jakarta.servlet.annotation.*;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-import Controllers.Commands;
-
-import javax.xml.parsers.ParserConfigurationException;
-
 @WebServlet(name = "FilmAPIServlet", value = "/FilmAPIServlet")
 public class FilmAPIServlet extends HttpServlet {
+
     Commands commands;
 
     {
@@ -30,22 +31,25 @@ public class FilmAPIServlet extends HttpServlet {
         response.setContentType("text/html;charset=UTF-8");
         var writer = response.getWriter();
 
-        if(request.getParameterMap().containsKey("id")){
+        if (request.getParameterMap().containsKey("id")) {
             var film = commands.getById(Integer.parseInt(request.getParameter("id")));
             System.out.println(film);
             writer.println("GET ID.");
         } else if (request.getParameterMap().containsKey("title")) {
             var films = commands.searchByTitle(request.getParameter("title"));
-            for (Film f:films) {
+            for (Film f : films) {
                 System.out.println(f);
             }
             writer.println("GET TITLES.");
         } else {
             var films = (ArrayList<Film>) commands.getAllFilms();
-            for (Film f:films) {
+            for (Film f : films) {
                 System.out.println(f);
             }
             writer.println("GET ALL.");
+
+            if (request.getParameter("format").equals("JSON")) {
+            }
         }
     }
 
@@ -54,12 +58,11 @@ public class FilmAPIServlet extends HttpServlet {
         var writer = response.getWriter();
         String message = "Failed";
 
-        if(request.getParameterMap().containsKey("title")
+        if (request.getParameterMap().containsKey("title")
                 && request.getParameterMap().containsKey("year")
                 && request.getParameterMap().containsKey("stars")
                 && request.getParameterMap().containsKey("director")
-                && request.getParameterMap().containsKey("review"))
-        {
+                && request.getParameterMap().containsKey("review")) {
             String title = request.getParameter("title");
             String director = request.getParameter("director");
             String stars = request.getParameter("stars");
@@ -70,7 +73,7 @@ public class FilmAPIServlet extends HttpServlet {
 
             int result = commands.insertFilm(f);
 
-            if( result > 0 ) {
+            if (result > 0) {
                 message = "Inserted.";
             }
         }
@@ -84,10 +87,10 @@ public class FilmAPIServlet extends HttpServlet {
         var writer = response.getWriter();
         String message = "Failed";
 
-        if(request.getParameterMap().containsKey("id")){
+        if (request.getParameterMap().containsKey("id")) {
             int result = commands.deleteFilm(Integer.parseInt(request.getParameter("id")));
 
-            if(result>0){
+            if (result > 0) {
                 message = "Deleted.";
             }
         }
@@ -100,13 +103,12 @@ public class FilmAPIServlet extends HttpServlet {
         var writer = response.getWriter();
         String message = "Failed";
 
-        if(request.getParameterMap().containsKey("title")
+        if (request.getParameterMap().containsKey("title")
                 && request.getParameterMap().containsKey("year")
                 && request.getParameterMap().containsKey("stars")
                 && request.getParameterMap().containsKey("director")
                 && request.getParameterMap().containsKey("review")
-                && request.getParameterMap().containsKey("id"))
-        {
+                && request.getParameterMap().containsKey("id")) {
             String title = request.getParameter("title");
             String director = request.getParameter("director");
             String stars = request.getParameter("stars");
@@ -119,7 +121,7 @@ public class FilmAPIServlet extends HttpServlet {
 
             int result = commands.updateFilm(f);
 
-            if( result > 0 ) {
+            if (result > 0) {
                 message = "Updated.";
             }
         }
@@ -127,4 +129,7 @@ public class FilmAPIServlet extends HttpServlet {
         writer.println(message);
     }
 
+    enum format {
+        JSON, XML, TEXT
+    }
 }
