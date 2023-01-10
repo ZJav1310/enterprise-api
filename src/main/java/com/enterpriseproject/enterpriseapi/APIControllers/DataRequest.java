@@ -7,12 +7,12 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.sql.SQLException;
 import java.util.Collection;
 
-public class RequestUtility {
+public class DataRequest {
     Commands commands;
-    public RequestUtility(){
+    public DataRequest(){
         try {
             this.commands = new Commands();
-        } catch (ParserConfigurationException | SQLException e) {
+        } catch (ParserConfigurationException e) {
             throw new RuntimeException(e);
         }
     }
