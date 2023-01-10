@@ -13,8 +13,8 @@ import java.util.Objects;
 @WebServlet(name = "FilmAPIServlet", value = "/FilmAPIServlet")
 public class FilmAPIServlet extends HttpServlet {
     private final DataRequest dataRequestCommand = new DataRequest();
-    private FormatType incomingContentType;
-    private FormatType outgoingMediaType;
+//    private FormatType incomingContentType;
+//    private FormatType outgoingMediaType;
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -23,11 +23,11 @@ public class FilmAPIServlet extends HttpServlet {
          * Checks if this parameter value is in FormatType enum list
          * If it exists, set the outgoingMediaType with getMimeType()
          */
-        if(areParamsValid(request, "format")) {
-            if(isFormatValid(getParamValue(request, "format"))){
-                this.outgoingMediaType = null; // getContentType returns the Media Type
-            }
-        }
+//        if(areParamsValid(request, "format")) {
+//            if(isFormatValid(getParamValue(request, "format"))){
+//                this.outgoingMediaType = null; // getContentType returns the Media Type
+//            }
+//        }
 
 //        FormatterFactory.getInstance().setReaderType(outgoingMediaType);
 //        response.setContentType(FormatType.getReader().getMediaType());
@@ -120,9 +120,9 @@ public class FilmAPIServlet extends HttpServlet {
         return true;
     }
 
-    private FormatType responseContentType (HttpServletRequest request) {
-        return FormatType.valueOf(request.getParameter("format").trim().toUpperCase());
-    }
+//    private FormatType responseContentType (HttpServletRequest request) {
+//        return FormatType.valueOf(request.getParameter("format").trim().toUpperCase());
+//    }
 
     private StringBuilder getMethodContent(HttpServletRequest request) {
         StringBuilder output = new StringBuilder();
@@ -184,9 +184,9 @@ public class FilmAPIServlet extends HttpServlet {
 //        return Arrays.stream(FormatType.values()).anyMatch( x -> Objects.equals(x.getMimeType(), stringFormat.trim()));
 //    }
 
-    private boolean isFormatValid(String stringFormat){
-        return Arrays.stream(FormatType.values()).anyMatch( x -> Objects.equals(x.name(), stringFormat.trim().toUpperCase()));
-    }
+//    private boolean isFormatValid(String stringFormat){
+//        return Arrays.stream(FormatType.values()).anyMatch( x -> Objects.equals(x.name(), stringFormat.trim().toUpperCase()));
+//    }
 
 
 //    private FormatType getFormatMimeType(String stringFormat){
