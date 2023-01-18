@@ -10,7 +10,7 @@ public enum FormatType {
     TEXT(TextReader.getInstance()),
     XML(XMLReader.getInstance());
 
-    private Reader reader;
+    private final Reader reader;
     FormatType(Reader reader) {
         this.reader = reader;
     }

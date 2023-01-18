@@ -10,6 +10,85 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+
+/**
+ * - TODO: Whats the return code if connection to the database isn't working?
+ * - TODO: Formatter should be changed to a helper class.
+ *
+ * Headers:
+ *      - Use Accept for receiving payload,
+ *      - Use Content-Type when sending payload,
+ *
+ *      - on request:
+ *          -If there is Accept in the header, use the appropriate parser.
+ *      - on response:
+ *          - If content-type has been defined, use appropriate method,
+ *          - If not, output JSON.
+ *
+ * Expected format:
+ *  Returning Films:
+ * {
+ *   "films": [
+ *     {
+ *       "title": "qqqqqqqq",
+ *       "year": "qqq",
+ *       "director": "qqq",
+ *       "stars": "qqqqq",
+ *       "review": "qq",
+ *       "id": 2
+ *     },
+ *     {
+ *       "title": "ssss",
+ *       "year": "d",
+ *       "director": "d",
+ *       "stars": "d",
+ *       "review": "d",
+ *       "id": 6
+ *     }
+ *   ]
+ * }
+ * Returning Film:
+ * <Film>
+ *     <id>10005</id>
+ *     <title>This has been changed</title>
+ *     <year>344</year>
+ *     <director>sadadasdsad</director>
+ *     <stars>asdadadad</stars>
+ *     <review>adsdaasdadas</review>
+ * </Film>
+ *
+ *
+ * Formatter:
+ *      - Film Object -> Serialise -> Requested format as string
+ *      - Payload -> Deserialise -> Film Object
+ *
+ * API:
+ * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status">...</a>
+ *
+ *  - If the input is malformed return 400 Bad request?
+ *  - 412 Precondition failed - "The client has indicated preconditions in its headers which the server does not meet."
+ *  - 415 Unsupported Media Type - "The media format of the requested data is not supported by the server, so the server is rejecting the request."
+ *  - 500 Internal Server Error -> Could use this if the database connection failed?
+ *  - This way of writing it exists -> HttpServletResponse.SC_NOT_FOUND
+ *      - GET
+ *          - Get all films
+ *          - Get film with id
+ *          - 200 OK -> resource has been fetched
+ *          - 409 Conflict -> use when input is incorrect
+ *      - PUT
+ *          - Update film with new payload
+ *          - Return 200 if successful
+ *      - POST
+ *          - Create new film
+ *          - 201 Created -> use when insert worked.
+ *      - DELETE
+ *          - Delete film with id
+ *          - Returns Header 200 if successful
+ *          - 404 Not Found -> if id is not found
+ *          - <a href="https://stackoverflow.com/questions/17884469/what-is-the-http-response-code-for-failed-http-delete-operation#:~:text=Yes%2C%20it%20would%20be%20404">...</a>.
+ *
+ */
+
 @WebServlet(name = "FilmAPIServlet", value = "/FilmAPIServlet")
 public class FilmAPIServlet extends HttpServlet {
     private final DataRequest dataRequestCommand = new DataRequest();
@@ -104,6 +183,7 @@ public class FilmAPIServlet extends HttpServlet {
 
     }
 
+    // Utility type methods to make retrieving commonly occurring instructions easier
     private static boolean areParamsValid(HttpServletRequest request, String key) {
         return request.getParameterMap().containsKey(key);
     }

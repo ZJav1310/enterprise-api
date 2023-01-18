@@ -4,7 +4,6 @@ import Controllers.Commands;
 import Models.Film;
 
 import javax.xml.parsers.ParserConfigurationException;
-import java.sql.SQLException;
 import java.util.Collection;
 
 public class DataRequest {
