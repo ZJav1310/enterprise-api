@@ -1,19 +1,28 @@
 package com.enterpriseproject.enterpriseapi;
 
 import Models.Film;
+import Utils.JSONReader;
+import Utils.Reader;
+import Utils.TextReader;
+import Utils.XMLReader;
+
 import com.enterpriseproject.enterpriseapi.APIControllers.*;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
+import java.util.stream.Collectors;
 
 
 /**
- * - TODO: Whats the return code if connection to the database isn't working?
- * - TODO: Formatter should be changed to a helper class.
+ * - TODO:  Whats the return code if connection to the database isn't working?
+ * - TODO:  Formatter should be changed to a helper class.
+ * - TODO:  Change the methods at core to throw the correct exceptions and to not merge them
+ *          because the client interfaces (Like this API) should deal with them -> helps with what to output.
+ * - TODO: IF IT FAILS WHAT THE FUCK HAPPENS!!! NEED VALIDATION -> CHECK IF THE INPUTS WORK.
  *
  * Headers:
  *      - Use Accept for receiving payload,
@@ -64,6 +73,7 @@ import java.util.Objects;
  *
  * API:
  * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status">...</a>
+ * https://gist.github.com/igorjs/407ffc3126f6ef2a6fe8f918a0673b59
  *
  *  - If the input is malformed return 400 Bad request?
  *  - 412 Precondition failed - "The client has indicated preconditions in its headers which the server does not meet."
@@ -91,191 +101,201 @@ import java.util.Objects;
 
 @WebServlet(name = "FilmAPIServlet", value = "/FilmAPIServlet")
 public class FilmAPIServlet extends HttpServlet {
+    // DataRequest is the bridge from core to this api, it has all the database query methods I need for this API.
     private final DataRequest dataRequestCommand = new DataRequest();
-//    private FormatType incomingContentType;
-//    private FormatType outgoingMediaType;
+    private List<String> errorMessage = new ArrayList<>();
 
+    // Fake loading plugin that an easily be replaced with reflection stuff to build proper plugin loading
+    private final List<Reader> supportedReaders = new ArrayList<>(Arrays.asList(JSONReader.getInstance(), XMLReader.getInstance(), TextReader.getInstance()));
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        /**
-         * Checks if "format" parameter is given,
-         * Checks if this parameter value is in FormatType enum list
-         * If it exists, set the outgoingMediaType with getMimeType()
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) {
+
+        Reader reader = chooseReader(request);
+
+        /*
+            Checks for params and does query that matches it:
+                id -> Get film with that id
+                title -> Searches for films that contain the title param
+                /empty -> Gets ALL fills
          */
-//        if(areParamsValid(request, "format")) {
-//            if(isFormatValid(getParamValue(request, "format"))){
-//                this.outgoingMediaType = null; // getContentType returns the Media Type
-//            }
-//        }
 
-//        FormatterFactory.getInstance().setReaderType(outgoingMediaType);
-//        response.setContentType(FormatType.getReader().getMediaType());
-//        response.getWriter().println(getMethodContent(request));
+        List<Film> films = new ArrayList<>();
+
+        if (areParamsValid(request, "id")) {
+            int id = Integer.parseInt(request.getParameter("id"));
+            films.add(dataRequestCommand.getById(id));
+
+        } else if (areParamsValid(request, "title")) {
+
+            films.addAll(dataRequestCommand.searchByTitle(request.getParameter("title")));
+
+        } else {
+            films.addAll(dataRequestCommand.getAll());
+        }
+
+        response.setContentType(reader.getAcceptedMimeType());
+
+        //new Film[0] is to work around Type erasure.
+        var output = reader.serialiseObject(films.toArray(new Film[0]));
+
+        try{
+            response.getWriter().println(output);
+            response.setStatus(HttpServletResponse.SC_OK);
+        } catch (IOException e) {
+            errorMessage.add("Error returning output.");
+            System.err.println(Arrays.toString(errorMessage.toArray()));
+            response.setStatus(HttpServletResponse.SC_CONFLICT);
+        }
+    }
+
+    // Add new film
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) {
+        var input = "";
+        int result = -1;
+
+        try {
+            input = request.getReader().lines().collect(Collectors.joining());
+        } catch (IOException e) {
+            this.errorMessage.add("Error reading request body");
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+
+        Reader reader = chooseReader(request, input);
+
+        if(reader != null){
+            response.setContentType(reader.getAcceptedMimeType());
+            Film f = reader.deserialiseObject(input, Film.class);
+            if(f != null){
+                result = dataRequestCommand.insertFilm(f);
+            }
+        } else {
+            this.errorMessage.add("Content is malformed or not accepted");
+            response.setStatus(HttpServletResponse.SC_CONFLICT);
+        }
+
+        if (result > 0){
+            response.setStatus(HttpServletResponse.SC_CREATED);
+        } else {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        }
+
+        try {
+            response.getWriter().println(result);
+        } catch (IOException e) {
+            errorMessage.add("Error returning output.");
+            System.err.println(Arrays.toString(errorMessage.toArray()));
+        }
+    }
+
+    // https://www.ibm.com/docs/en/eamfoc/7.6.0?topic=methods-delete-method
+    @Override
+    protected void doDelete(HttpServletRequest request, HttpServletResponse response) {
+
+        int result = -1;
+
+        Reader reader = chooseReader(request);
+
+        response.setContentType(reader.getAcceptedMimeType());
+
+        if (areParamsValid(request, "id")) {
+            result = dataRequestCommand.deleteFilm(Integer.parseInt(request.getParameter("id")));
+        } else {
+            errorMessage.add("No id given.");
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        }
+
+        if (result > 0){
+            response.setStatus(HttpServletResponse.SC_OK);
+        } else {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        }
+
+        try {
+            response.getWriter().println(result);
+        } catch (IOException e) {
+            errorMessage.add("Error returning output.");
+            System.err.println(Arrays.toString(errorMessage.toArray()));
+        }
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        int result = 0;
-        StringBuilder output = new StringBuilder();
-        Film f = null;
-        List<String> parameters = List.of("title", "year", "stars", "director", "review");
+    protected void doPut(HttpServletRequest request, HttpServletResponse response) {
+        var input = "";
+        int result = -1;
 
-        /**
-         * Checks if the request URL has the parameters to fulfill the POST request,
-         * If it has all the parameters, then create the Film object.
-         * <p>
-         * If not, check the request body is not null,
-         * If true, call method to serialise from the request body.
-         */
-//        if (areParamsValid(request, parameters)) {
-//            f = toFilm(request, parameters);
-//
-//        } else if (request.getReader() != null) {
-//            f = serialiseToFilm(request);
-//        }
-//
-//        setOutgoingContentType(request);
-//
-//        if (f != null)
-//            result = dataRequestCommand.insertFilm(f);
-//
-//        if (result > 0)
-//            output.append(formatter.serialise(f));
-//
-//        response.setContentType(formatter.getContentType());
-//        response.getWriter().println(output);
+        try {
+            input = request.getReader().lines().collect(Collectors.joining());
+        } catch (IOException e) {
+            this.errorMessage.add("Error reading request body");
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+
+        Reader reader = chooseReader(request, input);
+
+        if(reader != null){
+            response.setContentType(reader.getAcceptedMimeType());
+            Film f = reader.deserialiseObject(input, Film.class);
+            if(f != null){
+                result = dataRequestCommand.updateFilm(f);
+            }
+        } else {
+            this.errorMessage.add("Content is malformed or not accepted");
+            response.setStatus(HttpServletResponse.SC_CONFLICT);
+        }
+
+        if (result > 0){
+            response.setStatus(HttpServletResponse.SC_OK);
+        } else {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        }
+
+        try {
+            response.getWriter().println(result);
+        } catch (IOException e) {
+            errorMessage.add("Error returning output.");
+            System.err.println(Arrays.toString(errorMessage.toArray()));
+        }
     }
 
-    @Override
-    protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
-//        defineResponseFormat(request);
-//        response.setContentType(formatter.getContentType());
-//        response.getWriter().println(deleteMethod(request));
+    private Reader chooseReader(HttpServletRequest request){
+//        var readers = this.supportedReaders.stream().filter(o -> o.getAcceptedMimeType().equals(request.getHeader("Accept"))).collect(Collectors.toList());
+//        if(readers.size() == 0){
+//            this.errorMessage.add("Format not defined in Accept, set to JSON");
+//            return this.supportedReaders.get(0);
+//        } else {
+//            // Gets the reader that matches the Accept Header (MIME-TYPE)
+//            return readers.get(0);
+//        }
+        return chooseReader(request, null);
     }
 
-    @Override
-    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    private Reader chooseReader(HttpServletRequest request, String input){
+        var readers = this.supportedReaders.stream().filter(o -> o.getAcceptedMimeType().equals(request.getHeader("Accept"))).collect(Collectors.toList());
+        if(readers.size() == 0){
+            this.errorMessage.add("Format not defined in Accept Header, Finding reader.");
+            if(input != null){
 
-//        int result = 0;
-//        Film f = null;
-//
-//        List<String> parameters = List.of("title", "year", "stars", "director", "review");
-//
-//        StringBuilder output = new StringBuilder();
-//
-//        if (areParamsValid(request, parameters)) {
-//            f = toFilm(request, parameters);
-//
-//        } else if (request.getReader() != null) {
-//            f = serialiseToFilm(request);
-//        }
-//
-//        defineResponseFormat(request);
-//
-//        if (f != null)
-//            result = dataRequestCommand.updateFilm(f);
-//
-//        if (result > 0)
-//            output.append(formatter.serialise(f));
-//
-//        response.setContentType(formatter.getContentType());
-//        response.getWriter().println(output);
-
+                for(Reader r : this.supportedReaders){
+                    if(r.isValidInput(input, Film.class)){
+                        return r;
+                    }
+                }
+                this.errorMessage.add("Reader could not be found.");
+            } else {
+                return this.supportedReaders.get(0);
+            }
+        } else {
+            // Gets the reader that matches the Accept Header (MIME-TYPE)
+            return readers.get(0);
+        }
+        return null;
     }
 
     // Utility type methods to make retrieving commonly occurring instructions easier
     private static boolean areParamsValid(HttpServletRequest request, String key) {
         return request.getParameterMap().containsKey(key);
     }
-    private static String getParamValue(HttpServletRequest request, String key){
-        return request.getParameter(key);
-    }
 
-    private static boolean areParamsValid(HttpServletRequest request, List<String> arrayList) {
-        for (String name : arrayList) {
-            if (!request.getParameterMap().containsKey(name)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-//    private FormatType responseContentType (HttpServletRequest request) {
-//        return FormatType.valueOf(request.getParameter("format").trim().toUpperCase());
-//    }
-
-    private StringBuilder getMethodContent(HttpServletRequest request) {
-        StringBuilder output = new StringBuilder();
-//        if (areParamsValid(request, "id")) {
-//            int id = Integer.parseInt(request.getParameter("id"));
-//            output.append(formatter.serialise(dataRequestCommand.getById(id)));
-//
-//        } else if (areParamsValid(request, "title")) {
-//            for (Film f : dataRequestCommand.searchByTitle(request.getParameter("title"))) {
-//                output.append(formatter.serialise(f));
-//            }
-//        } else {
-//            for (Film f : dataRequestCommand.getAll()) {
-//                output.append(formatter.serialise(f));
-//            }
-//        }
-        return output;
-    }
-
-    private StringBuilder deleteMethod(HttpServletRequest request) {
-        StringBuilder output = new StringBuilder();
-        if (areParamsValid(request, "id")) {
-            int result = dataRequestCommand.deleteFilm(Integer.parseInt(request.getParameter("id")));
-
-            if (result > 0) {
-                output.append("Deleted.");
-            }
-        }
-        return output;
-    }
-
-    private Film serialiseToFilm(HttpServletRequest request) throws IOException {
-//        String requestBody = request.getReader().lines().collect(Collectors.joining());
-//        formatter.setReader(request.getContentType());
-//        return (Film) formatter.deserialise(requestBody, Film.class);
-        return null;
-    }
-
-    private Film toFilm(HttpServletRequest request, List<String> list) {
-        String title = request.getParameter("title");
-        int year = Integer.parseInt(request.getParameter("year"));
-        String director = request.getParameter("director");
-        String stars = request.getParameter("stars");
-        String review = request.getParameter("review");
-
-        if (list.size() == 6) {
-            int id = Integer.parseInt(request.getParameter("id"));
-            return new Film(id, title, year, director, stars, review);
-        } else {
-            return new Film(title, year, director, stars, review);
-        }
-    }
-
-    private boolean isFormatParamRequested(HttpServletRequest request){
-        return areParamsValid(request, "format");
-    }
-
-//    private boolean isFormatMimeTypeValid(String stringFormat){
-//        return Arrays.stream(FormatType.values()).anyMatch( x -> Objects.equals(x.getMimeType(), stringFormat.trim()));
-//    }
-
-//    private boolean isFormatValid(String stringFormat){
-//        return Arrays.stream(FormatType.values()).anyMatch( x -> Objects.equals(x.name(), stringFormat.trim().toUpperCase()));
-//    }
-
-
-//    private FormatType getFormatMimeType(String stringFormat){
-//        for (FormatType f : FormatType.values()) {
-//            if(Objects.equals(f.getMimeType(), stringFormat)){
-//                return f;
-//            }
-//        }
-//        return null;
-//    }
 }
 
