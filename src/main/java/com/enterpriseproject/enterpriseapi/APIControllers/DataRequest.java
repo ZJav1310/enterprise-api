@@ -8,7 +8,8 @@ import java.util.Collection;
 
 public class DataRequest {
     Commands commands;
-    public DataRequest(){
+
+    public DataRequest() {
         try {
             this.commands = new Commands();
         } catch (ParserConfigurationException e) {
@@ -16,15 +17,15 @@ public class DataRequest {
         }
     }
 
-    public Film getById(int id){
+    public Film getById(int id) {
         return commands.getById(id);
     }
 
-    public Collection<Film> searchByTitle(String title){
+    public Collection<Film> searchByTitle(String title) {
         return commands.searchByTitle(title);
     }
 
-    public Collection<Film> getAll(){
+    public Collection<Film> getAll() {
         return commands.getAllFilms();
     }
 
