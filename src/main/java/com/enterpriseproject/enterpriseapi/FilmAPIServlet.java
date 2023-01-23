@@ -115,17 +115,19 @@ public class FilmAPIServlet extends HttpServlet {
     // Fake loading plugin that an easily be replaced with reflection stuff to build proper plugin loading
     private final List<Reader> supportedReaders = new ArrayList<>(Arrays.asList(JSONReader.getInstance(), XMLReader.getInstance(), TextReader.getInstance()));
 
+    /**
+     * This method will check the request parameters which would give 3 different outcomes which goes as follows:
+     *      - If the id is given as a parameter, it will request getById()
+     *      - If the title is given as a parameter, it will searchByTitle()
+     *      - If nothing is given, it will get all films.
+     * @param request an {@link HttpServletRequest} object that contains the request the client has made of the servlet
+     *
+     * @param response an {@link HttpServletResponse} object that contains the response the servlet sends to the client
+     *
+     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) {
         String output = "";
-
-        /*
-            Checks for params and does query that matches it:
-                id -> Get film with that id
-                title -> Searches for films that contain the title param
-                /empty -> Gets ALL fills
-         */
-
         List<Film> films = new ArrayList<>();
 
         if (areParamsValid(request, "id")) {
@@ -164,6 +166,16 @@ public class FilmAPIServlet extends HttpServlet {
         }
     }
 
+    /**
+     * This method reads the request body, and ACCEPT header - it will look for the correct reader to use to deserialise
+     * the request and try to insert the film. If this fails, Preconditioned Failed is given as a status, if successful it
+     * will compare if the number of rows modified is greater than 0, if so it will return OK for the response header.
+     *
+     * @param request an {@link HttpServletRequest} object that contains the request the client has made of the servlet
+     *
+     * @param response an {@link HttpServletResponse} object that contains the response the servlet sends to the client
+     *
+     */
     // Add new film
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) {
@@ -205,6 +217,15 @@ public class FilmAPIServlet extends HttpServlet {
         }
     }
 
+
+    /**
+     * If id is given as a parameter, this method will try to delete the film with that id.
+     *
+     * @param request the {@link HttpServletRequest} object that contains the request the client made of the servlet
+     *
+     * @param response the {@link HttpServletResponse} object that contains the response the servlet returns to the client
+     *
+     */
     // https://www.ibm.com/docs/en/eamfoc/7.6.0?topic=methods-delete-method
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) {
@@ -235,6 +256,13 @@ public class FilmAPIServlet extends HttpServlet {
         }
     }
 
+    /**
+     *
+     * @param request the {@link HttpServletRequest} object that contains the request the client made of the servlet
+     *
+     * @param response the {@link HttpServletResponse} object that contains the response the servlet returns to the client
+     *
+     */
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response) {
         var input = "";
@@ -274,6 +302,15 @@ public class FilmAPIServlet extends HttpServlet {
         }
     }
 
+
+    /**
+     * This method filters the list of supported readers depending on the mimetype given,
+     * If an extra parameter is given and the mimetype is invalid, it will try to validate the input given
+     * to the readers that exist.
+     * If no extra parameter is given, it will output JSONReader by default.
+     * @param mimeType
+     * @return Reader or null
+     */
     private Reader chooseReader(String mimeType) {
         return chooseReader(mimeType, null);
     }
